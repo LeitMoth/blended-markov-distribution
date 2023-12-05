@@ -1,12 +1,21 @@
-mod distribution;
 mod bmd;
+mod data;
+mod distribution;
+mod swords;
 
 use std::collections::VecDeque;
 
+use bmd::{Lookback12, RExp, BMD, SpikeDist};
 use distribution::*;
-use bmd::{BMD, RExp, Lookback12};
 
-fn main() {
+use crate::bmd::{BlendedDist, WeightedCUDs};
+
+fn main() -> std::io::Result<()> {
+
+    swords::s12_locrot::go()?;
+    // swords::s12_loc::go();
+
+    return Ok(());
     /*
     let sumcud = AvgCUD {
         cuds: vec![
@@ -45,7 +54,7 @@ fn main() {
     let mut y = 10.0;
     let mut dy = 0.0;
     let ddy = -9.8;
-    let frametime = 1.0/24.0;
+    let frametime = 1.0 / 24.0;
     let mut frames = Vec::new();
     for frame in 0..120 {
         dy += ddy * frametime;
@@ -60,42 +69,98 @@ fn main() {
     }
 
     {
-        let mut bmd: BMD<RExp, AvgCUD> = BMD { distributions: vec![] };
+        let mut bmd: BMD<RExp, AvgCUD> = BMD {
+            distributions: vec![],
+        };
 
         let delta = 0.1;
 
         for window in frames.windows(2) {
-            bmd.distributions.push((RExp(window[0]), AvgCUD { cuds: vec![CUD {a: window[1] - delta, b: window[1] + delta}] }))
+            bmd.distributions.push((
+                RExp(window[0]),
+                AvgCUD {
+                    cuds: vec![CUD {
+                        a: window[1] - delta,
+                        b: window[1] + delta,
+                    }],
+                },
+            ))
         }
 
         let mut last = 9.0;
         for i in 0..120 {
-            println!("{i}\t{last}");
-            last = bmd.interpolate::<WeightedAvgCUD>(RExp(last)).sample();
+            // println!("{i}\t{last}");
+            last = distribution::Sample::sample(&bmd.interpolate::<WeightedAvgCUD>(RExp(last)));
         }
     }
 
     {
         let delta = 0.2;
 
-        let mut bmd12: BMD<Lookback12, AvgCUD> = BMD { distributions: vec![] };
+        let mut bmd12: BMD<Lookback12, AvgCUD> = BMD {
+            distributions: vec![],
+        };
         for window in frames.windows(13) {
-            let mut buf = [0.0;12];
+            let mut buf = [0.0; 12];
             buf.clone_from_slice(&window[0..12]);
-            bmd12.distributions.push((Lookback12(buf), AvgCUD { cuds: vec![CUD {a: window[12] - delta, b: window[12] + delta}] }))
+            bmd12.distributions.push((
+                Lookback12(buf),
+                AvgCUD {
+                    cuds: vec![CUD {
+                        a: window[12] - delta,
+                        b: window[12] + delta,
+                    }],
+                },
+            ))
         }
 
         dbg!(&bmd12);
 
-        let mut last = frames[0..12].iter().map(|f|*f).collect::<VecDeque<_>>();
-        let mut last = VecDeque::from([9.0;12]);
+        let mut last = frames[0..12].iter().map(|f| *f).collect::<VecDeque<_>>();
+        let mut last = VecDeque::from([9.0; 12]);
         for i in 0..120 {
             // println!("{i}\t{}", last.back().unwrap());
-            let mut buf = [0.0;12];
+            let mut buf = [0.0; 12];
             buf.copy_from_slice(last.make_contiguous());
-            let new = bmd12.interpolate::<WeightedAvgCUD>(Lookback12(buf)).sample();
+            let new = Sample::sample(&bmd12.interpolate::<WeightedAvgCUD>(Lookback12(buf)));
             last.pop_front();
             last.push_back(new);
         }
     }
+
+    {
+        let delta = 0.2;
+
+        let mut bmd12: BMD<Lookback12, CUD> = BMD {
+            distributions: vec![],
+        };
+
+        for window in frames.windows(13) {
+            let mut buf = [0.0; 12];
+            buf.clone_from_slice(&window[0..12]);
+            bmd12.distributions.push((
+                Lookback12(buf),
+                CUD {
+                    a: window[12] - delta,
+                    b: window[12] + delta,
+                },
+            ));
+        }
+
+        dbg!(&bmd12);
+
+        let mut last = frames[0..12].iter().map(|f| *f).collect::<VecDeque<_>>();
+        let mut last = VecDeque::from([9.0; 12]);
+        for i in 0..120 {
+            // println!("{i}\t{}", last.back().unwrap());
+            let mut buf = [0.0; 12];
+            buf.copy_from_slice(last.make_contiguous());
+            let new = bmd12.interpolate::<WeightedCUDs>(Lookback12(buf)).sample();
+            last.pop_front();
+            last.push_back(new);
+        }
+
+        Ok(())
+    }
+
 }

@@ -1,2 +1,2 @@
-mod distribution;
 mod bmd;
+mod distribution;

@@ -10,7 +10,7 @@ pub struct CUD {
 }
 
 impl CUD {
-    fn len(&self) -> f32 {
+    pub fn len(&self) -> f32 {
         self.b - self.a
     }
 }
@@ -55,7 +55,6 @@ impl Sample for CUD {
 
         let unit_spread = (rand::random::<f32>() - 0.5) * 2.0;
 
-
         center + half_width * (unit_spread * unit_spread * unit_spread)
     }
 }
@@ -94,12 +93,15 @@ impl<'a> WeightedAvgCUD<'a> {
 
         WeightedAvgCUD { weighted_cuds }
     }
-
 }
 
 impl Sample for WeightedAvgCUD<'_> {
     fn sample(&self) -> f32 {
-        let total = self.weighted_cuds.iter().map(|(cud, w)| cud.len() * w).sum::<f32>();
+        let total = self
+            .weighted_cuds
+            .iter()
+            .map(|(cud, w)| cud.len() * w)
+            .sum::<f32>();
 
         let cutoff = rand::random::<f32>() * total;
         let mut bar = 0.0;
@@ -116,6 +118,9 @@ impl Sample for WeightedAvgCUD<'_> {
 
 impl PDF for WeightedAvgCUD<'_> {
     fn evaluate(&self, x: f32) -> f32 {
-        self.weighted_cuds.iter().map(|(cud, w)| cud.evaluate(x) * w).sum::<f32>()
+        self.weighted_cuds
+            .iter()
+            .map(|(cud, w)| cud.evaluate(x) * w)
+            .sum::<f32>()
     }
 }
